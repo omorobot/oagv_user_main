@@ -1,0 +1,3 @@
+[submodule "src/omoduino"]
+	path = src/omoduino
+	url = https://github.com/omorobot/omoduino.git
