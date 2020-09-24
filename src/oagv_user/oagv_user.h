@@ -12,6 +12,11 @@
 #ifndef _OAGV_USER_H_
 #define _OAGV_USER_H_
 
+#include <inttypes.h>
+
+class LiquidCrystal;
+class Keypad;
+
 enum User_Event {
     OAGV_GO_EMPTY,
     OAGV_GO_WITH_STATION,
@@ -27,9 +32,43 @@ public:
     typedef void (*OAGV_NewUserEvent)(User_Event);
     OAGV_USER();
     
-    void begin(void);
-    void spin(void);
+    void    begin(void);
+    void    onNewEvent(OAGV_NewUserEvent cbEvent);
+    void    spin(void);
+
 private:
+    typedef struct DispStation_TypeDef{
+        uint8_t   type;
+        uint16_t  num_set;
+        uint8_t   num_cnt;
+        bool      is_set;
+    }DispStation_TypeDef;
+
+    typedef enum {
+        disp_state_standby = 0,
+        disp_state_A_in = 1,
+        disp_state_B_in = 2,
+        disp_state_C_in = 3,
+        disp_state_D_in = 4,
+        disp_state_enter = 5
+    }disp_State_Type;
+
+    LiquidCrystal *lcd;
+    Keypad *keypad;
+
+    DispStation_TypeDef station_1;
+    DispStation_TypeDef station_2;
+    disp_State_Type disp_state;
+    OAGV_NewUserEvent _cbEvent;
+
+    void display_line1(void);
+    void display_line2(void);
+    void display_stationReset(DispStation_TypeDef* station);
+    void display_station(DispStation_TypeDef* station, bool cursor_blink);
+    void display_init(void);
+    void display_station_numberSet(DispStation_TypeDef* station, uint8_t num_in);
+    void key_in(char key);
 
 };
+
 #endif

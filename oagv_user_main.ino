@@ -1,10 +1,10 @@
-#include <LiquidCrystal.h>
 #include "src/omoduino/r1_driver.h"
 #include "src/omoduino/sonar.h"
 #include "src/oagv_user/oagv_user.h"
 
 OMOROBOT_R1 r1(53);   //Initialize r1 with SS pin D53
-OAGV_USER oagv_user();
+OAGV_USER   user;
+
 uint64_t timer_update_millis_last = millis();
 uint16_t sec = 0;
 uint16_t ms = 0;
@@ -66,19 +66,20 @@ void setup() {
   r1.set_lineoutTime(2000);
   r1.onNewData(newR1_message_event);
   r1.begin();
+  
+  user.onNewEvent(newOAGV_User_event);
+  user.begin();
+  
   // Set detection range for sonar
   sonar_L.set_range(60.0);
   sonar_R.set_range(60.0);
-  // set up the LCD's number of columns and rows:
-  lcd.begin(20, 4);
-  lcd.print("Hello, world!");
-  lcd.setCursor(0,1);
-  lcd.print("OMOROBOT INC.");
   digitalWrite(PIN_STATUS_LED, LOW);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  r1.spin();
+  user.spin();
   /*
   if(millis() - sonar_update_millis_last > 19) {    //For every 20ms
     loop_update_sonar();
@@ -99,15 +100,13 @@ void loop() {
     digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
     status_led_update_millis_last = millis();
   }
+  
   if(millis() - timer_update_millis_last > 99) {
     ms++;
     if(ms>9) { 
         ms = 0;
         sec++;
     }
-    lcd.setCursor(0,2);
-    sprintf(cbuff, "%d:%d",sec, ms);
-    lcd.print(cbuff);
     timer_update_millis_last = millis();
   }
 }
