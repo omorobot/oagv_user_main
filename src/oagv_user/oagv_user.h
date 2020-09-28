@@ -16,6 +16,7 @@
 
 class LiquidCrystal;
 class Keypad;
+class MCP2515;
 
 enum User_Event {
     OAGV_GO_EMPTY,
@@ -24,20 +25,22 @@ enum User_Event {
 };
 
 class OAGV_USER
-{
-    typedef void (*loop_event)(void);
-    
-    
+{   
 public:
     typedef void (*OAGV_NewUserEvent)(User_Event);
     OAGV_USER();
     
-    void    begin(void);
-    void    onNewEvent(OAGV_NewUserEvent cbEvent);
-    void    spin(void);
+    void        begin(void);
+    void        onNewEvent(OAGV_NewUserEvent cbEvent);
+    void        spin(void);
+    void        set_depot_max_num(uint16_t num);
+    void        set_pou_max_num(uint16_t num);
+    uint16_t    get_depot_num(void);
+    uint16_t    get_pou_num(void);
 
 private:
     typedef struct DispStation_TypeDef{
+        uint16_t  num_max;
         uint8_t   type;
         uint16_t  num_set;
         uint8_t   num_cnt;
@@ -55,6 +58,7 @@ private:
 
     LiquidCrystal *lcd;
     Keypad *keypad;
+    MCP2515 *canbus;
 
     DispStation_TypeDef station_1;
     DispStation_TypeDef station_2;

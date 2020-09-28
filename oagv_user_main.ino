@@ -1,14 +1,23 @@
+#include <mcp2515.h>
 #include "src/omoduino/r1_driver.h"
 #include "src/omoduino/sonar.h"
 #include "src/oagv_user/oagv_user.h"
+#include "src/oagv_conveyor/oagv_conveyor.h"
 
-OMOROBOT_R1 r1(53);   //Initialize r1 with SS pin D53
-OAGV_USER   user;
 
+
+MCP2515 mcp2515 = new MCP2515(53);    //Initialize CAN bus with SS pin D53
+
+OMOROBOT_R1   r1(&mcp2515);   //Initialize R1 with MCP2515 as external reference
+OAGV_USER     user;           //Initialize User interface (LCD display, Keypad)
+OAGV_CONVEYOR conv(&mcp2515); //Initialize Conveyor and Lift controller with MCP2515 as external reference
+
+struct can_frame canRxMsg;
+struct can_frame canTxMsg;
+ 
 uint64_t timer_update_millis_last = millis();
 uint16_t sec = 0;
 uint16_t ms = 0;
-char cbuff[20];
 
 const int PIN_TRIGGER1  = 55;  //A10
 const int PIN_ECHO1     = 56;  //A11
@@ -38,13 +47,18 @@ void newR1_message_event(R1_MessageType msgType) {
       break;
    }
 }
+// Handle user input event from Keypad
 void newOAGV_User_event(User_Event event) {
    switch(event) {
    case OAGV_GO_EMPTY:
+      r1.go(250);
       break;
    case OAGV_GO_WITH_STATION:
+      mcp2515.sendMessage(&canTxMsg);
+      r1.go(250);
       break;
    case OAGV_STOP:
+      r1.stop();
       break;
    }
 }
@@ -55,6 +69,19 @@ void loop_update_sonar()
       sonar_distance_L = sonar_L.measure_cm();
    } else {
       sonar_distance_R = sonar_R.measure_cm();
+   }
+}
+void process_new_canMsg(struct can_frame rxMsg)
+{
+   int senderID = (rxMsg.can_id>>4)&0x0F;
+   int dlc = rxMsg.can_dlc;
+   switch(senderID) {
+      case 0x02:     //From LINE Sensor
+      r1.can_linePos(rxMsg);
+      break;
+      case 0x04:
+      r1.can_odo(rxMsg);
+      break;
    }
 }
 
@@ -78,6 +105,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  if (mcp2515.readMessage(&canRxMsg) == MCP2515::ERROR_OK) {
+     process_new_canMsg(canRxMsg);
+  }
   r1.spin();
   user.spin();
   /*

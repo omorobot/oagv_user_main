@@ -1,6 +1,7 @@
 #include "oagv_user.h"
 #include <LiquidCrystal.h>
 #include <Keypad.h>
+#include <mcp2515.h>
 
 //LiquidCrystal  
 //  D22 --> rs
@@ -140,37 +141,47 @@ void OAGV_USER::display_station_numberSet(DispStation_TypeDef* station, uint8_t 
 }
 void OAGV_USER::key_in(char key)
 {
-  if(key == 0x0A) {
+  if(key == 0x0A) {       //Set station 1
     Serial.println("Key A");
     disp_state = disp_state_A_in;
     display_stationReset(&station_1);
     display_station(&station_1, true);
   } 
-  else if(key == 0x0B) {
+  else if(key == 0x0B) {  //Set station 2
     Serial.println("Key B");
     disp_state = disp_state_B_in;
     display_stationReset(&station_2);
     display_station(&station_2, true);
   } 
-  else if(key >=0 && key < 0x0A) {
-    if(disp_state == disp_state_A_in) {
+  else if(key == 0x0C) {
+    if(!station_1.is_set&&!station_2.is_set) {
+      _cbEvent(OAGV_GO_EMPTY);
+    } else {
+      _cbEvent(OAGV_GO_WITH_STATION);
+    }
+  }
+  else if(key == 0x0D) {
+    _cbEvent(OAGV_STOP);
+  }
+  else if(key >=0 && key < 0x0A) {    //Numeric button pressed
+    if(disp_state == disp_state_A_in) {   //Currently in station 1 input mode
       display_station_numberSet(&station_1, (uint8_t)key);
       Serial.println(station_1.num_set);
       display_station(&station_1, true);
     } 
-    else if(disp_state == disp_state_B_in) {
+    else if(disp_state == disp_state_B_in) {  //Currently in station 2 input mode
       display_station_numberSet(&station_2, (uint8_t)key);
       Serial.println(station_2.num_set);
       display_station(&station_2, true);
     }
   } 
-  else if(key == 0x0E) {
+  else if(key == 0x0E) {  //Clear all items
     display_stationReset(&station_1);
     display_stationReset(&station_2);
     display_station(&station_1, false);
     display_station(&station_2, false);
   }
   else if(key == 0x0F) {
-
+    
   }
 }
