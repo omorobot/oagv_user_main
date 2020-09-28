@@ -15,26 +15,41 @@
 
 #include <inttypes.h>
 
+#define CONV_CONTROL_STOP       0xFF    ///Stop belt
+#define CONV_LOADING            0x50    ///Belt will move when box detected
+#define CONV_UNLOAD_LEFT        0x51    ///Belt will move left to unload box
+#define CONV_UNLOAD_RIGHT       0x52    ///Belt will move right to unload box
+
+#define CONV_UNLOAD_FINISHED    0x53
+
+
 class MCP2515;
 
 enum ConveyorModeType {
-    Conv_mode_none = 0,
-    Conv_mode_manual_loading = 1,
-    Conv_mode_unloading_right = 2,
-    Conv_mode_unloading_left = 3
+    Conveyor_stop =         0,  ///Belt will not move
+    Conveyor_loading =      1,  ///Belt will move when box detected
+    Conveyor_unload_left =  2,  ///Belt will move left to unload
+    Conveyor_unload_right = 3   ///Belt will move right to unload
+};
+enum ConveyorEventType {
+    Conveyor_event_none =       0,
+    Conveyor_unload_finished =  1, ///Uloading finished
+    Conveyor_lift_finished =    2, ///Left is finished motion
 };
 
 class OAGV_CONVEYOR 
 {
 public:
-
+    typedef void (*NewConveyorEvent)(ConveyorEventType);
     OAGV_CONVEYOR(MCP2515* mcp2515);
 
+    void        onNewEvent(NewConveyorEvent cbEvent);
     void        set_mode(ConveyorModeType mode);
-
-
+    void        spin(void);
+    void        new_can_frame(struct can_frame rxMsg);
 private:    
     MCP2515 *_mcp2515;
+    NewConveyorEvent _cbEvent;
     
 };
 
