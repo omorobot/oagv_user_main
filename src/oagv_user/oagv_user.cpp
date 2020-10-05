@@ -3,20 +3,20 @@
 #include <Keypad.h>
 #include <mcp2515.h>
 
+
+uint64_t    refresh_last_millis = millis();
 //LiquidCrystal  
 //  D22 --> rs
 //  D23 --> rw
 //  D24 --> enable
 //  D25~D32 --> d0, d1, d2, d3, d4, d5, d6, d7
-
-
 const byte rows = 4; //four rows
 const byte cols = 4; //three columns
 char keys[rows][cols] = {
   {0x01,0x02,0x03,0x0A},
   {0x04,0x05,0x06,0x0B},
   {0x07,0x08,0x09,0x0C},
-  {0x0E,0x00,0x0F,0x0D}
+  {0x0E,0x10,0x0F,0x0D}   // Zero set to 0x10 not to be ignored
 };
 byte rowPins[rows] = {37, 38, 39, 40}; //connect to the row pinouts of the keypad
 byte colPins[cols] = {33, 34, 35, 36}; //connect to the column pinouts of the keypad
@@ -44,6 +44,21 @@ void OAGV_USER::onNewEvent(OAGV_NewUserEvent cbEvent) {
   _cbEvent = cbEvent;
 }
 
+void OAGV_USER::set_depot_max_num(uint16_t num) {
+  station_1.num_max = num;
+}
+uint16_t OAGV_USER::get_depot_num(void) {
+  return station_1.num_set;
+}
+
+void OAGV_USER::set_pou_max_num(uint16_t num) {
+  station_2.num_max = num;
+}
+uint16_t OAGV_USER::get_pou_num(void)
+{
+  return station_2.num_set;
+}
+
 void OAGV_USER::begin() {
   lcd->begin(20, 4);
   lcd->clear();
@@ -61,6 +76,15 @@ void OAGV_USER::spin(void)
   char key = keypad->getKey();
   if(key) {
     key_in(key);
+  } else if(millis() - refresh_last_millis > 24) {
+    display_line1();
+    display_line2();
+    if(disp_state == disp_state_A_in) {
+      display_station(&station_1, true);
+    }else if(disp_state == disp_state_B_in) {
+      display_station(&station_2, true);
+    }
+    refresh_last_millis = millis();
   }
 }
 
@@ -122,38 +146,49 @@ void OAGV_USER::display_station(DispStation_TypeDef* station, bool cursor_blink)
 }
 void OAGV_USER::display_station_numberSet(DispStation_TypeDef* station, uint8_t num_in)
 {
+  uint16_t temp_num = 0;
   switch(station->num_cnt) {
     case 0:
-      station->num_set = num_in;
-      if(num_in !=0) {
+      if(num_in > station->num_max || num_in == 0) {
+        station->num_set = 0;  
+      } else {
+        station->is_set = true;
+        station->num_set = num_in;
         station->num_cnt++;
       }
     break;
     case 1:
-      station->num_set = station->num_set*10+num_in;
-      station->num_cnt++;
+      temp_num = station->num_set*10 + num_in;
+      if(temp_num <= station->num_max) {
+        station->num_set = station->num_set*10+num_in;
+        station->num_cnt++;
+      }
     break;
     case 2:
-      station->num_set = station->num_set*10+num_in;
-      station->num_cnt = 0;
+      temp_num = station->num_set*10 + num_in;
+      if(temp_num <= station->num_max) {
+        station->num_set = station->num_set*10+num_in;
+        station->num_cnt = 0;
+      }
     break;
   }
 }
 void OAGV_USER::key_in(char key)
 {
   if(key == 0x0A) {       //Set station 1
-    Serial.println("Key A");
+    Serial.println("Key: A");
     disp_state = disp_state_A_in;
     display_stationReset(&station_1);
     display_station(&station_1, true);
   } 
   else if(key == 0x0B) {  //Set station 2
-    Serial.println("Key B");
+    Serial.println("Key: B");
     disp_state = disp_state_B_in;
     display_stationReset(&station_2);
     display_station(&station_2, true);
   } 
   else if(key == 0x0C) {
+    Serial.println("Key: GO");
     if(!station_1.is_set&&!station_2.is_set) {
       _cbEvent(OAGV_GO_EMPTY);
     } else {
@@ -161,9 +196,11 @@ void OAGV_USER::key_in(char key)
     }
   }
   else if(key == 0x0D) {
+    Serial.println("Key: STOP");
     _cbEvent(OAGV_STOP);
   }
-  else if(key >=0 && key < 0x0A) {    //Numeric button pressed
+  else if( (key >0 && key < 0x0A) || key == 0x10) {    //Numeric button pressed
+    if(key == 0x10) key = 0;
     if(disp_state == disp_state_A_in) {   //Currently in station 1 input mode
       display_station_numberSet(&station_1, (uint8_t)key);
       Serial.println(station_1.num_set);

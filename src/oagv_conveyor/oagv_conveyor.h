@@ -47,10 +47,11 @@ public:
     void        set_mode(ConveyorModeType mode);
     void        spin(void);
     void        new_can_frame(struct can_frame rxMsg);
+    bool        is_finished(void);
 private:    
     MCP2515 *_mcp2515;
     NewConveyorEvent _cbEvent;
-    
+    bool        box_out_finished;
 };
 
 #endif
