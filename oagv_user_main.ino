@@ -45,6 +45,9 @@ void newR1_message_event(R1_MessageType msgType) {
       break;
    case R1MSG_LINEOUT:
       break;
+   case R1MSG_NEW_TAG:
+      
+      break;
    default:
       break;
    }
@@ -96,10 +99,10 @@ void process_new_can_frame(struct can_frame rxMsg)
    int dlc = rxMsg.can_dlc;
    switch(senderID) {
    case 0x02:     //From LINE Sensor
-      r1.can_linePos(rxMsg);
+      r1.new_can_line(rxMsg);
       break;
    case 0x04:     //From Motor Driver
-      r1.can_odo(rxMsg);
+      r1.new_can_odo(rxMsg);
       break;
    case 0x05:     //From conveyor module
       conv.new_can_frame(rxMsg);
@@ -114,23 +117,23 @@ void process_depot()
    case 0:
       
       break;
-   case 1:
+   case 1:        //Stop the vehicle and wait
       r1.pause();
       if(depot.add_wait_cnt() > 100) {
          depot.set_state_num(2);
+         depot.reset_wait_timer();
       }
       break;
-   case 2:
+   case 2:        //Move conveyor for loading boxes
       conv.set_mode(Conveyor_loading);
-      depot.reset_wait_timer();
       depot.set_state_num(3);
       break;
-   case 3:
+   case 3:        //Wait until loading job is finished
       if(conv.is_finished()) {
          depot.set_state_num(4);
       }
       break;
-   case 4:
+   case 4:        //Start the vehicle
       depot.set_state_num(0);
       r1.go(300);
       break;
@@ -144,14 +147,14 @@ void process_pou()
    switch(pou.get_state_num()) {
    case 0:
       break;
-   case 1:
+   case 1:        //Stop the vehicle and wait
       r1.pause();
       if(pou.add_wait_cnt() > 100) {
          pou.set_state_num(2);
          pou.reset_wait_timer();
       }
       break;
-   case 2:
+   case 2:        //Move conveyor per direction L/R
       if(pou.get_station_dir() == station_dir_left) {
          conv.set_mode(Conveyor_unload_left);
       } else if(pou.get_station_dir() == station_dir_right) {
@@ -161,15 +164,15 @@ void process_pou()
       }
       pou.set_state_num(3);
       break;
-   case 3:
+   case 3:        //Wait for conveyor job to be finished
       if(conv.is_finished()) {
          conv.set_mode(Conveyor_stop);
          pou.set_state_num(4);
       }
       break;
-   case 4:
+   case 4:        //Start move
       r1.go(300);
-      pou.set_state_num(0);
+      pou.set_state_num(0);   //Reset state
       break;
    }
 }
