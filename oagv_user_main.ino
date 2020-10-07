@@ -46,7 +46,7 @@ void newR1_message_event(R1_MessageType msgType) {
    case R1MSG_LINEOUT:
       break;
    case R1MSG_NEW_TAG:
-      
+
       break;
    default:
       break;
@@ -182,7 +182,7 @@ void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   pinMode(PIN_STATUS_LED, OUTPUT);
-  r1.set_driveMode(R1DRV_LineTracer);
+  r1.set_driveMode(R1DRV_LineTracerMode);
   r1.set_lineoutTime(2000);
   r1.onNewData(newR1_message_event);
   r1.begin();
