@@ -4,15 +4,18 @@
 #include "src/oagv_user/oagv_user.h"
 #include "src/oagv_conveyor/oagv_conveyor.h"
 #include "src/oagv_station/oagv_station.h"
+#include "src/oagv_user/oagv_button.h"
+
 
 MCP2515 mcp2515(53);    //Initialize CAN bus with SS pin D53
 
-OMOROBOT_R1   r1(&mcp2515);   //Initialize R1 with MCP2515 as external reference
-OAGV_USER     user;           //Initialize User interface (LCD display, Keypad)
-OAGV_CONVEYOR conv(&mcp2515); //Initialize Conveyor and Lift controller with MCP2515 as external reference
+OMOROBOT_R1    r1(&mcp2515);   //Initialize R1 with MCP2515 as external reference
+OAGV_USER      user;           //Initialize User interface (LCD display, Keypad)
+OAGV_BUTTON    buttons;
+OAGV_CONVEYOR  conv(&mcp2515); //Initialize Conveyor and Lift controller with MCP2515 as external reference
 
-OAGV_STATION depot;
-OAGV_STATION pou;
+OAGV_STATION   depot;
+OAGV_STATION   pou;
 
 struct can_frame canRxMsg;
 struct can_frame canTxMsg;
@@ -34,8 +37,27 @@ const int PIN_STATUS_LED    = 48;
 uint64_t  status_led_update_millis_last = millis();
 
 uint64_t  process_update_millis_last = millis();
-
-void newR1_message_event(R1_MessageType msgType) {
+void newUserButton_event(Button_Event event)
+{
+   switch (event)
+   {
+   case BTN_A_Pressed:
+      Serial.println("BTN_A pressed")
+      break;
+   case BTN_B_Pressed:
+      Serial.println("BTN_B pressed")
+      break;
+   case BTN_C_Pressed:
+      break;
+   case BTN_D_Pressed:
+      break;
+   
+   default:
+      break;
+   }
+}
+void newR1_message_event(R1_MessageType msgType) 
+{
    switch (msgType) {
    case R1MSG_ODO:
       break;
@@ -47,7 +69,8 @@ void newR1_message_event(R1_MessageType msgType) {
       break;
    }
 }
-void newR1_TagRead_event(Tag_Struct tag) {
+void newR1_TagRead_event(Tag_Struct tag) 
+{
    switch(tag.type) {
    case TAG_None:
       break;
@@ -241,7 +264,7 @@ void setup() {
    user.set_depot_max_num(10);
    user.set_pou_max_num(100);
    user.begin();
-
+   buttons.on_NewEvent(newUserButton_event);
    conv.onNewEvent(newConveyor_event);
    // Set detection range for sonar
    sonar_L.set_range(60.0);
@@ -256,6 +279,7 @@ void loop() {
   }
   r1.spin();
   user.spin();
+  buttons.update();
   conv.spin();
   if(!digitalRead(PIN_SW_A)) {
      Serial.println("PIN_A");

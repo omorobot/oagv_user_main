@@ -29,10 +29,23 @@ enum Button_Event {
 class OAGV_BUTTON
 {   
 public:
+    typedef struct {
+        int pin;
+        int state;
+        int state_last;
+    }ButtonType;
     typedef void (*OAGV_NewButtonEvent)(Button_Event);
     OAGV_BUTTON();
     void on_NewEvent(OAGV_NewButtonEvent cbEvent);
     void update(void);
 private:
     OAGV_NewButtonEvent _cbEvent;
+    ButtonType btnA;
+    ButtonType btnB;
+    ButtonType btnC;
+    ButtonType btnD;
+    void    button_init(ButtonType *btn, int pin, uint8_t pullup);
+    int     check_button_pressed(ButtonType *btn);
 };
+
+#endif
