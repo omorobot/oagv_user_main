@@ -45,10 +45,51 @@ void newR1_message_event(R1_MessageType msgType) {
       break;
    case R1MSG_LINEOUT:
       break;
-   case R1MSG_NEW_TAG:
-
-      break;
    default:
+      break;
+   }
+}
+void newR1_TagRead_event(Tag_Struct tag) {
+   switch(tag.type) {
+   case TAG_None:
+      break;
+   case TAG_DEPOT:
+      if(tag.bytes[2] == depot.get_id_num()) {
+         depot.set_state_num(1);
+         r1.go(100);
+      }
+      break;
+   case TAG_POU:
+      if(tag.bytes[2] == pou.get_id_num()) {
+         if(tag.bytes[1] == 1) {
+            pou.set_station_dir(station_dir_left);
+         }else if(tag.bytes[1] == 2) {
+            pou.set_station_dir(station_dir_right);
+         } else {
+            pou.set_station_dir(station_dir_none);
+         }
+         r1.pause();
+         pou.set_state_num(1);
+      }
+      break;
+   case TAG_APPROACH:
+      if(tag.bytes[2] == pou.get_id_num()) {
+         r1.go(100);
+      }
+      break;
+   case TAG_TURN:
+      break;
+   case TAG_CIN:
+      break;
+   case TAG_COUT:
+      break;
+   case TAG_SPEED:
+      r1.go(tag.bytes[2]*10);
+      break;
+   case TAG_SONAR:
+      break;
+   case TAG_READY:
+      r1.stop();
       break;
    }
 }
@@ -185,6 +226,7 @@ void setup() {
   r1.set_driveMode(R1DRV_LineTracerMode);
   r1.set_lineoutTime(2000);
   r1.onNewData(newR1_message_event);
+  r1.onNewTag(newR1_TagRead_event);
   r1.begin();
   
   user.onNewEvent(newOAGV_User_event);

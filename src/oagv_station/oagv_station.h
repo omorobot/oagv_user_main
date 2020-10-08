@@ -24,18 +24,18 @@ class OAGV_STATION
 {
 public:
     OAGV_STATION();
-    uint16_t    get_state_num(void);
-    void        set_state_num(uint16_t num);
-    uint16_t    add_wait_cnt(void);
-    void        reset_wait_timer(void);
-    StationDirType get_station_dir(void);
-    void        set_station_dir(StationDirType dir);
-    uint16_t    get_id_num(void);
-    void        set_id_num(uint16_t id);
+    uint16_t        get_state_num(void);
+    void            set_state_num(uint16_t num);
+    uint16_t        add_wait_cnt(void);
+    void            reset_wait_timer(void);
+    StationDirType  get_station_dir(void);
+    void            set_station_dir(StationDirType dir);
+    uint16_t        get_id_num(void);
+    void            set_id_num(uint16_t id);
 private:
-    uint16_t    wait_timer;
-    uint16_t    state_num;
+    uint16_t        wait_timer;
+    uint16_t        state_num;
     StationDirType  station_dir;
-    uint16_t    id_num;
+    uint16_t        id_num;
 };
 #endif
