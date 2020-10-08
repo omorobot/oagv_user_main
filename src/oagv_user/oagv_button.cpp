@@ -39,8 +39,13 @@ int OAGV_BUTTON::check_button_pressed(ButtonType *btn)
 {
     btn->state = digitalRead(btn->pin);
     if(btn->state !=btn->state_last) {
-        if(btn->state) {
-            return 1;
+        uint64_t diff_millis = millis() - btn->update_last_millis;
+        if(diff_millis > 50) {
+            btn->state_last = btn->state;
+            btn->update_last_millis = millis();
+            if(!btn->state) {
+                return 1;
+            }
         }
     }
     return 0;

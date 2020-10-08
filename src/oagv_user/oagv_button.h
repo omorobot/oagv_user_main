@@ -33,6 +33,7 @@ public:
         int pin;
         int state;
         int state_last;
+        uint64_t update_last_millis;
     }ButtonType;
     typedef void (*OAGV_NewButtonEvent)(Button_Event);
     OAGV_BUTTON();

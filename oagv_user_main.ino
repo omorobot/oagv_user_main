@@ -42,10 +42,10 @@ void newUserButton_event(Button_Event event)
    switch (event)
    {
    case BTN_A_Pressed:
-      Serial.println("BTN_A pressed")
+      Serial.println("BTN_A pressed");
       break;
    case BTN_B_Pressed:
-      Serial.println("BTN_B pressed")
+      Serial.println("BTN_B pressed");
       break;
    case BTN_C_Pressed:
       break;
@@ -281,12 +281,6 @@ void loop() {
   user.spin();
   buttons.update();
   conv.spin();
-  if(!digitalRead(PIN_SW_A)) {
-     Serial.println("PIN_A");
-  }
-  if(!digitalRead(PIN_SW_B)) {
-     Serial.println("PIN_B");
-  }
   /*
   if(millis() - sonar_update_millis_last > 19) {    //For every 20ms
     loop_update_sonar();
