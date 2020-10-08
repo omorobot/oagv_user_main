@@ -5,9 +5,7 @@
 #include "src/oagv_conveyor/oagv_conveyor.h"
 #include "src/oagv_station/oagv_station.h"
 
-
-
-MCP2515 mcp2515 = new MCP2515(53);    //Initialize CAN bus with SS pin D53
+MCP2515 mcp2515(53);    //Initialize CAN bus with SS pin D53
 
 OMOROBOT_R1   r1(&mcp2515);   //Initialize R1 with MCP2515 as external reference
 OAGV_USER     user;           //Initialize User interface (LCD display, Keypad)
@@ -220,25 +218,35 @@ void process_pou()
 
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  pinMode(PIN_STATUS_LED, OUTPUT);
-  r1.set_driveMode(R1DRV_LineTracerMode);
-  r1.set_lineoutTime(2000);
-  r1.onNewData(newR1_message_event);
-  r1.onNewTag(newR1_TagRead_event);
-  r1.begin();
-  
-  user.onNewEvent(newOAGV_User_event);
-  user.set_depot_max_num(10);
-  user.set_pou_max_num(100);
-  user.begin();
+   // put your setup code here, to run once:
+   Serial.begin(115200);
+   SPI.begin();
+   mcp2515.reset();
+   mcp2515.setBitrate(CAN_500KBPS);
+   mcp2515.setNormalMode();
+   Serial.println("CAN setup");
+   pinMode(PIN_STATUS_LED, OUTPUT);
+   pinMode(PIN_SW_A, INPUT);
+   pinMode(PIN_SW_B, INPUT);
+   pinMode(PIN_SW_C, INPUT);
+   pinMode(PIN_SW_D, INPUT);
+   r1.set_driveMode(R1DRV_LineTracerMode);
+   r1.set_drive_direction(Drive_Reverse, Line_Reverse);
+   r1.set_lineoutTime(2000);
+   r1.onNewData(newR1_message_event);
+   r1.onNewTag(newR1_TagRead_event);
+   r1.begin();
 
-  conv.onNewEvent(newConveyor_event);
-  // Set detection range for sonar
-  sonar_L.set_range(60.0);
-  sonar_R.set_range(60.0);
-  digitalWrite(PIN_STATUS_LED, LOW);
+   user.onNewEvent(newOAGV_User_event);
+   user.set_depot_max_num(10);
+   user.set_pou_max_num(100);
+   user.begin();
+
+   conv.onNewEvent(newConveyor_event);
+   // Set detection range for sonar
+   sonar_L.set_range(60.0);
+   sonar_R.set_range(60.0);
+   digitalWrite(PIN_STATUS_LED, LOW);
 }
 
 void loop() {
@@ -249,6 +257,12 @@ void loop() {
   r1.spin();
   user.spin();
   conv.spin();
+  if(!digitalRead(PIN_SW_A)) {
+     Serial.println("PIN_A");
+  }
+  if(!digitalRead(PIN_SW_B)) {
+     Serial.println("PIN_B");
+  }
   /*
   if(millis() - sonar_update_millis_last > 19) {    //For every 20ms
     loop_update_sonar();

@@ -2,5 +2,5 @@
     "board": "arduino:avr:mega",
     "configuration": "cpu=atmega2560",
     "sketch": "oagv_user_main.ino",
-    "port":"COM8"
+    "port":"COM3"
 }
