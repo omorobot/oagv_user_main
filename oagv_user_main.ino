@@ -5,20 +5,20 @@
 #include "src/oagv_conveyor/oagv_conveyor.h"
 #include "src/oagv_station/oagv_station.h"
 #include "src/oagv_user/oagv_button.h"
+#include "src/oagv_user/oagv_signal_lamp.h"
 
 
-MCP2515 mcp2515(53);    //Initialize CAN bus with SS pin D53
+MCP2515 mcp2515(53);             //Initialize CAN bus with SS pin D53
+OMOROBOT_R1    r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
+OAGV_USER      user;             //Initialize User interface (LCD display, Keypad)
+OAGV_BUTTON    buttons;          //Buttons object to monitor user input
+OAGV_SIGNAL_LAMP signal;         //Signal lamp object to notify user
+OAGV_CONVEYOR  conv(&mcp2515);   //Initialize Conveyor and Lift controller with MCP2515 as external reference
 
-OMOROBOT_R1    r1(&mcp2515);   //Initialize R1 with MCP2515 as external reference
-OAGV_USER      user;           //Initialize User interface (LCD display, Keypad)
-OAGV_BUTTON    buttons;
-OAGV_CONVEYOR  conv(&mcp2515); //Initialize Conveyor and Lift controller with MCP2515 as external reference
-
-OAGV_STATION   depot;
-OAGV_STATION   pou;
+OAGV_STATION   depot;            //Depot(Point of Loading) process
+OAGV_STATION   pou;              //POU (Point of Unloading) process
 
 struct can_frame canRxMsg;
-struct can_frame canTxMsg;
 
 const int PIN_TRIGGER1  = 55;  //A10
 const int PIN_ECHO1     = 56;  //A11
@@ -32,30 +32,31 @@ double    sonar_distance_L = 0.0;
 double    sonar_distance_R = 0.0;
 int       sonar_read_state = 0;
 
-
 const int PIN_STATUS_LED    = 48;
 uint64_t  status_led_update_millis_last = millis();
 
 uint64_t  process_update_millis_last = millis();
+
+//When user pressed a button, 
 void newUserButton_event(Button_Event event)
 {
    switch (event)
    {
-   case BTN_A_Pressed:
+   case BTN_A_Pressed:                 // Go button pressed
       Serial.println("BTN_A pressed");
       break;
-   case BTN_B_Pressed:
+   case BTN_B_Pressed:                 // Stop button pressed
       Serial.println("BTN_B pressed");
       break;
    case BTN_C_Pressed:
       break;
    case BTN_D_Pressed:
-      break;
-   
+      break;   
    default:
       break;
    }
 }
+// For any new data from motor driver module
 void newR1_message_event(R1_MessageType msgType) 
 {
    switch (msgType) {
@@ -69,6 +70,7 @@ void newR1_message_event(R1_MessageType msgType)
       break;
    }
 }
+// For any new tag data received from Line detector module.
 void newR1_TagRead_event(Tag_Struct tag) 
 {
    switch(tag.type) {
@@ -117,12 +119,10 @@ void newR1_TagRead_event(Tag_Struct tag)
 // Handle user input event from Keypad
 void newOAGV_User_event(User_Event event) {
    switch(event) {
-   case OAGV_GO_EMPTY:
+   case OAGV_GO_EMPTY:                 //Just go without any station assigned
       r1.go(250);
-      Serial.print("Empty GO");
       break;
-   case OAGV_GO_WITH_STATION:
-      mcp2515.sendMessage(&canTxMsg);
+   case OAGV_GO_WITH_STATION:          //Station number is set from user input
       pou.set_id_num(user.get_pou_num());
       depot.set_id_num(user.get_depot_num());
       r1.go(250);
@@ -131,7 +131,7 @@ void newOAGV_User_event(User_Event event) {
       Serial.print(" POU: ");
       Serial.println(user.get_pou_num());
       break;
-   case OAGV_STOP:
+   case OAGV_STOP:                     //Stop commanded from user input
       r1.stop();
       break;
    }
@@ -239,7 +239,6 @@ void process_pou()
    }
 }
 
-
 void setup() {
    // put your setup code here, to run once:
    Serial.begin(115200);
@@ -249,12 +248,8 @@ void setup() {
    mcp2515.setNormalMode();
    Serial.println("CAN setup");
    pinMode(PIN_STATUS_LED, OUTPUT);
-   pinMode(PIN_SW_A, INPUT);
-   pinMode(PIN_SW_B, INPUT);
-   pinMode(PIN_SW_C, INPUT);
-   pinMode(PIN_SW_D, INPUT);
    r1.set_driveMode(R1DRV_LineTracerMode);
-   r1.set_drive_direction(Drive_Reverse, Line_Reverse);
+   r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
@@ -269,6 +264,8 @@ void setup() {
    // Set detection range for sonar
    sonar_L.set_range(60.0);
    sonar_R.set_range(60.0);
+   signal.reset();
+   signal.SetSignal(Signal_Green, Blink_Slow);
    digitalWrite(PIN_STATUS_LED, LOW);
 }
 
@@ -281,6 +278,7 @@ void loop() {
   user.spin();
   buttons.update();
   conv.spin();
+  signal.spin();
   /*
   if(millis() - sonar_update_millis_last > 19) {    //For every 20ms
     loop_update_sonar();
