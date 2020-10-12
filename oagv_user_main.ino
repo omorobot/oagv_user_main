@@ -44,9 +44,13 @@ void newUserButton_event(Button_Event event)
    {
    case BTN_A_Pressed:                 // Go button pressed
       Serial.println("BTN_A pressed");
+      user.set_info_str("BTN STOP");
+      r1.go(-300);
       break;
    case BTN_B_Pressed:                 // Stop button pressed
       Serial.println("BTN_B pressed");
+      user.set_info_str("BTN GO");
+      r1.go(300);
       break;
    case BTN_C_Pressed:
       break;
@@ -249,7 +253,7 @@ void setup() {
    Serial.println("CAN setup");
    pinMode(PIN_STATUS_LED, OUTPUT);
    r1.set_driveMode(R1DRV_LineTracerMode);
-   r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
+   //r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
@@ -259,6 +263,7 @@ void setup() {
    user.set_depot_max_num(10);
    user.set_pou_max_num(100);
    user.begin();
+   user.set_logo_str("OAGV-PL");
    buttons.on_NewEvent(newUserButton_event);
    conv.onNewEvent(newConveyor_event);
    // Set detection range for sonar

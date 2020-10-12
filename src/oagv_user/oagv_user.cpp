@@ -28,7 +28,7 @@ uint8_t disp_bmp = 0;
 uint8_t disp_sonar = 0;
 
 
-char lcd_chars_logo[12] = "OAGV";
+char lcd_chars_logo[MAX_LOGO_SIZE] = "OAGV";
 char lcd_chars_on[3] = "_ON";
 char lcd_chars_off[3] = "OFF";
 
@@ -38,6 +38,7 @@ OAGV_USER::OAGV_USER() {
   disp_state = disp_state_standby;
   station_1.type = 1;
   station_2.type = 2;
+  info_update("Intialized!");
 }
 
 void OAGV_USER::onNewEvent(OAGV_NewUserEvent cbEvent) {
@@ -79,6 +80,7 @@ void OAGV_USER::spin(void)
   } else if(millis() - refresh_last_millis > 24) {
     display_line1();
     display_line2();
+    //display_info();
     if(disp_state == disp_state_A_in) {
       display_station(&station_1, true);
     } else if(disp_state == disp_state_B_in) {
@@ -95,13 +97,13 @@ void OAGV_USER::display_line1(void)
 {
   lcd->setCursor(0,0);
   lcd->print(lcd_chars_logo);
-  lcd->setCursor(10,0);
+  lcd->setCursor(12,0);
   if(disp_online) {
     lcd->print(lcd_chars_on);
   } else {
     lcd->print(lcd_chars_off);  
   }
-  lcd->setCursor(13,0);
+  lcd->setCursor(15,0);
   lcd->print("_LINE");
 }
 void OAGV_USER::display_line2(void)
@@ -109,11 +111,55 @@ void OAGV_USER::display_line2(void)
   lcd->setCursor(0,1);
   lcd->print("BAT:");
   lcd->print(disp_batLvl);
-  lcd->setCursor(9,1);
+  lcd->setCursor(8,1);
   lcd->print("SN:");
   lcd->print(disp_sonar);
   lcd->print(" BP:");
   lcd->print(disp_bmp);
+}
+void OAGV_USER::display_info(void)
+{
+  lcd->setCursor(0, 3);
+  lcd->print(_info_str);
+}
+int OAGV_USER::set_info_str(String str)
+{
+  if(str.length() > 20) {
+    return -1;
+  }
+  info_update(str);
+  return 0;
+}
+int OAGV_USER::set_info_1d(char* str, int x)
+{
+  char buf[20];
+  sprintf(buf, "%s:%d, %d", str, x);
+  Serial.println(buf);
+  info_update(buf);
+}
+int OAGV_USER::set_info_2d(char* str, int x, int y)
+{
+  char buf[20];
+  sprintf(buf, "%s:%d, %d", str, x, y);
+  Serial.println(buf);
+  info_update(buf);
+}
+
+int OAGV_USER::info_update(String str)
+{
+  int strlen = str.length();
+  if(strlen > 20) return -1;
+  int strlen_prev = _info_str.length();
+  int blanks = strlen_prev - strlen;
+  _info_str = str;
+  lcd->setCursor(0, 3);
+  lcd->print(_info_str);
+  if(blanks > 0) {
+    for(int i = 0; i<blanks; i++) {
+      lcd->print(" ");
+    }
+  }
+  return 0;
 }
 void OAGV_USER::display_stationReset(DispStation_TypeDef* station)
 {
@@ -194,13 +240,16 @@ void OAGV_USER::key_in(char key)
     Serial.println("Key: GO");
     if(!station_1.is_set&&!station_2.is_set) {
       _cbEvent(OAGV_GO_EMPTY);
+      info_update("USER:Go empty");
     } else {
       _cbEvent(OAGV_GO_WITH_STATION);
+      set_info_2d("Station", station_1.num_set, station_2.num_set);
     }
   }
   else if(key == 0x0D) {
     Serial.println("Key: STOP");
     _cbEvent(OAGV_STOP);
+    info_update("USER: STOP");
   }
   else if( (key >0 && key < 0x0A) || key == 0x10) {    //Numeric button pressed
     if(key == 0x10) key = 0;
@@ -223,6 +272,17 @@ void OAGV_USER::key_in(char key)
     disp_state = disp_state_standby;
   }
   else if(key == 0x0F) {
-    
   }
+}
+
+int OAGV_USER::set_logo_str(String str)
+{
+  if(str.length() > MAX_LOGO_SIZE) {   // String size Too long
+    return 1;
+  }
+  else {
+    str.toCharArray(lcd_chars_logo, MAX_LOGO_SIZE);
+  }
+  Serial.println(lcd_chars_logo);
+  return 0;
 }

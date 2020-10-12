@@ -12,7 +12,10 @@
 #ifndef _OAGV_USER_H_
 #define _OAGV_USER_H_
 
+#include <Arduino.h>
 #include <inttypes.h>
+
+#define MAX_LOGO_SIZE       11
 
 class LiquidCrystal;
 class Keypad;
@@ -37,7 +40,10 @@ public:
     void        set_pou_max_num(uint16_t num);
     uint16_t    get_depot_num(void);
     uint16_t    get_pou_num(void);
-
+    int         set_logo_str(String str);
+    int         set_info_str(String str);
+    int         set_info_1d(char* str, int x);
+    int         set_info_2d(char* str, int x, int y);
 private:
     typedef struct DispStation_TypeDef{
         uint16_t  num_max;
@@ -64,15 +70,17 @@ private:
     DispStation_TypeDef station_2;
     disp_State_Type disp_state;
     OAGV_NewUserEvent _cbEvent;
+    String _info_str;
 
-    void display_line1(void);
-    void display_line2(void);
-    void display_stationReset(DispStation_TypeDef* station);
-    void display_station(DispStation_TypeDef* station, bool cursor_blink);
-    void display_init(void);
-    void display_station_numberSet(DispStation_TypeDef* station, uint8_t num_in);
-    void key_in(char key);
-
+    void    display_line1(void);
+    void    display_line2(void);
+    void    display_info(void);
+    void    display_stationReset(DispStation_TypeDef* station);
+    void    display_station(DispStation_TypeDef* station, bool cursor_blink);
+    void    display_init(void);
+    void    display_station_numberSet(DispStation_TypeDef* station, uint8_t num_in);
+    void    key_in(char key);
+    int     info_update(String str);
 };
 
 #endif
