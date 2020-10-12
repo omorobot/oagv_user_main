@@ -8,7 +8,7 @@
 #include "src/oagv_user/oagv_signal_lamp.h"
 
 
-MCP2515 mcp2515(53);             //Initialize CAN bus with SS pin D53
+MCP2515        mcp2515(53);             //Initialize CAN bus with SS pin D53
 OMOROBOT_R1    r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
 OAGV_USER      user;             //Initialize User interface (LCD display, Keypad)
 OAGV_BUTTON    buttons;          //Buttons object to monitor user input
@@ -257,6 +257,7 @@ void setup() {
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
+   r1.set_vehicle_type(R1_vtype_PL153);
    r1.begin();
 
    user.onNewEvent(newOAGV_User_event);
