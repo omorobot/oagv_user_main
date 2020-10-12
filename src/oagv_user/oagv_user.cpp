@@ -81,8 +81,11 @@ void OAGV_USER::spin(void)
     display_line2();
     if(disp_state == disp_state_A_in) {
       display_station(&station_1, true);
-    }else if(disp_state == disp_state_B_in) {
+    } else if(disp_state == disp_state_B_in) {
       display_station(&station_2, true);
+    } else {
+      display_station(&station_1, false);
+      display_station(&station_2, false);
     }
     refresh_last_millis = millis();
   }
@@ -122,10 +125,10 @@ void OAGV_USER::display_station(DispStation_TypeDef* station, bool cursor_blink)
 {
   if(station->type == 1) {
     lcd->setCursor(0,2);
-    lcd->print("STATION1:");
+    lcd->print("DEPOT:");
   } else if( station->type == 2) {
-    lcd->setCursor(0,3);
-    lcd->print("STATION2:");
+    lcd->setCursor(10,2);
+    lcd->print("POU:");
   }
   if(station->num_set == 0) {
     lcd->print("___");
@@ -217,6 +220,7 @@ void OAGV_USER::key_in(char key)
     display_stationReset(&station_2);
     display_station(&station_1, false);
     display_station(&station_2, false);
+    disp_state = disp_state_standby;
   }
   else if(key == 0x0F) {
     
