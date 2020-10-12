@@ -144,6 +144,10 @@ int OAGV_USER::set_info_2d(char* str, int x, int y)
   Serial.println(buf);
   info_update(buf);
 }
+void OAGV_USER::set_sonar_distance(int dist)
+{
+  disp_sonar = dist / 10;
+}
 
 int OAGV_USER::info_update(String str)
 {
@@ -283,6 +287,5 @@ int OAGV_USER::set_logo_str(String str)
   else {
     str.toCharArray(lcd_chars_logo, MAX_LOGO_SIZE);
   }
-  Serial.println(lcd_chars_logo);
   return 0;
 }

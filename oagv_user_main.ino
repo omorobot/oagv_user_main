@@ -8,7 +8,7 @@
 #include "src/oagv_user/oagv_signal_lamp.h"
 
 
-MCP2515        mcp2515(53);             //Initialize CAN bus with SS pin D53
+MCP2515        mcp2515(53);      //Initialize CAN bus with SS pin D53
 OMOROBOT_R1    r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
 OAGV_USER      user;             //Initialize User interface (LCD display, Keypad)
 OAGV_BUTTON    buttons;          //Buttons object to monitor user input
@@ -20,22 +20,22 @@ OAGV_STATION   pou;              //POU (Point of Unloading) process
 
 struct can_frame canRxMsg;
 
-const int PIN_TRIGGER1  = 55;  //A10
-const int PIN_ECHO1     = 56;  //A11
-const int PIN_TRIGGER2  = 57;  //A12
-const int PIN_ECHO2     = 58;  //A13
+const int      PIN_TRIGGER1  = 64;  //A10
+const int      PIN_ECHO1     = 65;  //A11
+const int      PIN_TRIGGER2  = 66;  //A12
+const int      PIN_ECHO2     = 67;  //A13
 
-SONAR sonar_L = SONAR(PIN_TRIGGER1, PIN_ECHO1);
-SONAR sonar_R = SONAR(PIN_TRIGGER2, PIN_ECHO2);
-uint64_t  sonar_update_millis_last = millis();
-double    sonar_distance_L = 0.0;
-double    sonar_distance_R = 0.0;
-int       sonar_read_state = 0;
+SONAR          sonar_L = SONAR(PIN_TRIGGER1, PIN_ECHO1);
+SONAR          sonar_R = SONAR(PIN_TRIGGER2, PIN_ECHO2);
+uint64_t       sonar_update_millis_last = millis();
+double         sonar_distance_L = 0.0;
+double         sonar_distance_R = 0.0;
+int            sonar_read_state = 0;
 
-const int PIN_STATUS_LED    = 48;
-uint64_t  status_led_update_millis_last = millis();
+const int      PIN_STATUS_LED    = 48;
+uint64_t       status_led_update_millis_last = millis();
 
-uint64_t  process_update_millis_last = millis();
+uint64_t       process_update_millis_last = millis();
 
 //When user pressed a button, 
 void newUserButton_event(Button_Event event)
@@ -45,12 +45,14 @@ void newUserButton_event(Button_Event event)
    case BTN_A_Pressed:                 // Go button pressed
       Serial.println("BTN_A pressed");
       user.set_info_str("BTN STOP");
-      r1.go(-300);
+      r1.stop();
+      Serial1.print("$NONE\r\n"); 
       break;
    case BTN_B_Pressed:                 // Stop button pressed
       Serial.println("BTN_B pressed");
       user.set_info_str("BTN GO");
-      r1.go(300);
+      r1.go(800);
+      Serial1.print("$GO\r\n");
       break;
    case BTN_C_Pressed:
       break;
@@ -67,6 +69,7 @@ void newR1_message_event(R1_MessageType msgType)
    case R1MSG_ODO:
       break;
    case R1MSG_LINEPOS:
+      
       break;
    case R1MSG_LINEOUT:
       break;
@@ -163,6 +166,8 @@ void process_new_can_frame(struct can_frame rxMsg)
 {
    int senderID = (rxMsg.can_id>>4)&0x0F;
    int dlc = rxMsg.can_dlc;
+   //Serial.print("CAN:");
+   //Serial.print(rxMsg.can_id);
    switch(senderID) {
    case 0x02:     //From LINE Sensor
       r1.new_can_line(rxMsg);
@@ -246,6 +251,7 @@ void process_pou()
 void setup() {
    // put your setup code here, to run once:
    Serial.begin(115200);
+   Serial1.begin(115200);
    SPI.begin();
    mcp2515.reset();
    mcp2515.setBitrate(CAN_500KBPS);
@@ -253,11 +259,12 @@ void setup() {
    Serial.println("CAN setup");
    pinMode(PIN_STATUS_LED, OUTPUT);
    r1.set_driveMode(R1DRV_LineTracerMode);
+   r1.set_vehicle_type(R1_VEHICLE_TYPE_PL153);
    //r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
-   r1.set_vehicle_type(R1_vtype_PL153);
+   r1.set_v_accel(50);
    r1.begin();
 
    user.onNewEvent(newOAGV_User_event);
@@ -276,35 +283,40 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  if (mcp2515.readMessage(&canRxMsg) == MCP2515::ERROR_OK) {
-     process_new_can_frame(canRxMsg);
-  }
-  r1.spin();
-  user.spin();
-  buttons.update();
-  conv.spin();
-  signal.spin();
-  /*
-  if(millis() - sonar_update_millis_last > 19) {    //For every 20ms
-    loop_update_sonar();
-    //Check if anything detected in the sensor
-    if(sonar_L.detected() || sonar_R.detected()) {
-      r1.pause();
-    } else {
-    //Robot is cleared
-    if(r1.is_going()) {
-      r1.go();
+   // put your main code here, to run repeatedly:
+   if (mcp2515.readMessage(&canRxMsg) == MCP2515::ERROR_OK) {
+      process_new_can_frame(canRxMsg);
+   }
+   r1.spin();
+   user.spin();
+   buttons.update();
+   conv.spin();
+   signal.spin();
+  
+   if(millis() - sonar_update_millis_last > 199) {    //For every 200ms
+      loop_update_sonar();
+      //Check if anything detected in the sensor
+      if(sonar_L.detected()) {
+         //r1.pause();
+         user.set_sonar_distance(sonar_distance_L);
+      } else if(sonar_R.detected()) {
+         user.set_sonar_distance(sonar_distance_R);
+         //r1.pause(); 
+      } else {
+         user.set_sonar_distance(sonar_distance_L);
+         //Robot is cleared
+         if(r1.is_going()) {
+            r1.go();
+         }
       }
-    }
-    sonar_update_millis_last = millis();
-  }
-  */
-  if(millis() - process_update_millis_last > 9) {
+      sonar_update_millis_last = millis();
+   }
+  
+   if(millis() - process_update_millis_last > 9) {
 
-  }
-  if(millis() - status_led_update_millis_last > 499) {
-    digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
-    status_led_update_millis_last = millis();
-  }
+   }
+   if(millis() - status_led_update_millis_last > 499) {
+      digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
+      status_led_update_millis_last = millis();
+   }
 }

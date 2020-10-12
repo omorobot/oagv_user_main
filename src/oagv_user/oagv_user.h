@@ -44,6 +44,7 @@ public:
     int         set_info_str(String str);
     int         set_info_1d(char* str, int x);
     int         set_info_2d(char* str, int x, int y);
+    void        set_sonar_distance(int dist);
 private:
     typedef struct DispStation_TypeDef{
         uint16_t  num_max;
