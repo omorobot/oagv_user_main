@@ -8,36 +8,36 @@
 #include "src/oagv_user/oagv_signal_lamp.h"
 
 
-MCP2515        mcp2515(53);      //Initialize CAN bus with SS pin D53
-OMOROBOT_R1    r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
-OAGV_USER      user;             //Initialize User interface (LCD display, Keypad)
-OAGV_BUTTON    buttons;          //Buttons object to monitor user input
-OAGV_SIGNAL_LAMP signal;         //Signal lamp object to notify user
-OAGV_CONVEYOR  conv(&mcp2515);   //Initialize Conveyor and Lift controller with MCP2515 as external reference
+MCP2515           mcp2515(53);      //Initialize CAN bus with SS pin D53
+OMOROBOT_R1       r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
+OAGV_USER         user;             //Initialize User interface (LCD display, Keypad)
+OAGV_BUTTON       buttons;          //Buttons object to monitor user input
+OAGV_SIGNAL_LAMP  signal;           //Signal lamp object to notify user
+OAGV_CONVEYOR     conv(&mcp2515);   //Initialize Conveyor and Lift controller with MCP2515 as external reference
+OAGV_STATION      depot;            //Depot(Point of Loading) process
+OAGV_STATION      pou;              //POU (Point of Unloading) process
 
-OAGV_STATION   depot;            //Depot(Point of Loading) process
-OAGV_STATION   pou;              //POU (Point of Unloading) process
+struct can_frame  canRxMsg;
 
-struct can_frame canRxMsg;
+const int         PIN_TRIGGER1      = 64;  //A10
+const int         PIN_ECHO1         = 65;  //A11
+const int         PIN_TRIGGER2      = 66;  //A12
+const int         PIN_ECHO2         = 67;  //A13
 
-const int      PIN_TRIGGER1  = 64;  //A10
-const int      PIN_ECHO1     = 65;  //A11
-const int      PIN_TRIGGER2  = 66;  //A12
-const int      PIN_ECHO2     = 67;  //A13
+SONAR             sonar_L = SONAR(PIN_TRIGGER1, PIN_ECHO1);
+SONAR             sonar_R = SONAR(PIN_TRIGGER2, PIN_ECHO2);
 
-SONAR          sonar_L = SONAR(PIN_TRIGGER1, PIN_ECHO1);
-SONAR          sonar_R = SONAR(PIN_TRIGGER2, PIN_ECHO2);
-uint64_t       sonar_update_millis_last = millis();
-double         sonar_distance_L = 0.0;
-double         sonar_distance_R = 0.0;
-int            sonar_read_state = 0;
+uint64_t          sonar_update_millis_last = millis();
+double            sonar_distance_L  = 0.0;
+double            sonar_distance_R  = 0.0;
+int               sonar_read_state  = 0;
 
-const int      PIN_STATUS_LED    = 48;
-uint64_t       status_led_update_millis_last = millis();
+const int         PIN_STATUS_LED    = 48;
+uint64_t          status_led_update_millis_last = millis();
+uint64_t          process_update_millis_last = millis();
+char              disp_info[20];
 
-uint64_t       process_update_millis_last = millis();
-
-//When user pressed a button, 
+//Whenever the user pressed a button
 void newUserButton_event(Button_Event event)
 {
    switch (event)
@@ -51,8 +51,8 @@ void newUserButton_event(Button_Event event)
    case BTN_B_Pressed:                 // Stop button pressed
       Serial.println("BTN_B pressed");
       user.set_info_str("BTN GO");
-      r1.go(800);
-      Serial1.print("$GO\r\n");
+      r1.go(1500);
+      //Serial1.print("$GO\r\n");
       break;
    case BTN_C_Pressed:
       break;
@@ -62,7 +62,7 @@ void newUserButton_event(Button_Event event)
       break;
    }
 }
-// For any new data from motor driver module
+/// For any new data from motor driver module
 void newR1_message_event(R1_MessageType msgType) 
 {
    switch (msgType) {
@@ -80,6 +80,11 @@ void newR1_message_event(R1_MessageType msgType)
 // For any new tag data received from Line detector module.
 void newR1_TagRead_event(Tag_Struct tag) 
 {
+   if(tag.type!=TAG_None)
+   {
+      sprintf(disp_info, "TAG:%02X,%02X,%02X,%02X",tag.bytes[0], tag.bytes[1], tag.bytes[2], tag.bytes[3]);
+      user.set_info_str(disp_info);
+   }
    switch(tag.type) {
    case TAG_None:
       break;

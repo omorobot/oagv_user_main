@@ -13,7 +13,6 @@
 #define _OAGV_USER_H_
 
 #include <Arduino.h>
-#include <inttypes.h>
 
 #define MAX_LOGO_SIZE       11
 
