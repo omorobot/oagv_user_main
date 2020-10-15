@@ -263,8 +263,9 @@ void setup() {
    mcp2515.setNormalMode();
    Serial.println("CAN setup");
    pinMode(PIN_STATUS_LED, OUTPUT);
-   r1.set_driveMode(R1DRV_LineTracerMode);
-   r1.set_vehicle_type(R1_VEHICLE_TYPE_PL153);
+   /// Setup for Motor Controller:
+   r1.set_driveMode(R1_VEHICLE_TYPE_PL153, R1DRV_LineTracerMode);
+   //r1.set_vehicle_type(R1_VEHICLE_TYPE_PL153);
    //r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
@@ -272,16 +273,21 @@ void setup() {
    r1.set_v_accel(50);
    r1.begin();
 
+   ///Setup for user interface (LCD, Keypad input):
    user.onNewEvent(newOAGV_User_event);
    user.set_depot_max_num(10);
    user.set_pou_max_num(100);
    user.begin();
-   user.set_logo_str("OAGV-PL");
+   user.set_logo_str("OAGV-PL");          // LOGO on top left display (11 characters max)
+   
+   ///Setup for other devices:
    buttons.on_NewEvent(newUserButton_event);
    conv.onNewEvent(newConveyor_event);
-   // Set detection range for sonar
+
+   ///Setup for sonar detection range
    sonar_L.set_range(60.0);
    sonar_R.set_range(60.0);
+   ///Setup for signal lamp, buzzer
    signal.reset();
    signal.SetSignal(Signal_Green, Blink_Slow);
    digitalWrite(PIN_STATUS_LED, LOW);
