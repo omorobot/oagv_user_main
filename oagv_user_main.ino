@@ -7,6 +7,12 @@
 #include "src/oagv_user/oagv_button.h"
 #include "src/oagv_user/oagv_signal_lamp.h"
 
+#define PID_LINE_KP                 9.0
+#define PID_LINE_KI                 0.1
+#define PID_LINE_KD                 0.0
+#define PID_LINE_ERROR_I_MAX        150.0
+#define PID_LINE_OUT_MAX            180.0
+#define V_ACCEL                     50    //Originally 1 or 2
 
 MCP2515           mcp2515(53);      //Initialize CAN bus with SS pin D53
 OMOROBOT_R1       r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
@@ -18,6 +24,8 @@ OAGV_STATION      depot;            //Depot(Point of Loading) process
 OAGV_STATION      pou;              //POU (Point of Unloading) process
 
 struct can_frame  canRxMsg;
+
+PID_Type          pid_line;
 
 const int         PIN_TRIGGER1      = 64;  //A10
 const int         PIN_ECHO1         = 65;  //A11
@@ -265,12 +273,19 @@ void setup() {
    pinMode(PIN_STATUS_LED, OUTPUT);
    /// Setup for Motor Controller:
    r1.set_driveMode(R1_VEHICLE_TYPE_PL153, R1DRV_LineTracerMode);
+   r1.set_turning_speed(500, 180);  //Set turning speed 500 and Angle 180 (90degree)
+   pid_line.Kp =              PID_LINE_KP;
+   pid_line.Ki =              PID_LINE_KI;
+   pid_line.Kd =              PID_LINE_KD;
+   pid_line.error_i_max =     PID_LINE_ERROR_I_MAX;
+   pid_line.out_max =         PID_LINE_OUT_MAX;
+   r1.set_pid_gains(pid_line);
    //r1.set_vehicle_type(R1_VEHICLE_TYPE_PL153);
    //r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
-   r1.set_v_accel(50);
+   r1.set_v_accel(V_ACCEL);
    r1.begin();
 
    ///Setup for user interface (LCD, Keypad input):
