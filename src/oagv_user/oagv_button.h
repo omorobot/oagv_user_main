@@ -20,33 +20,33 @@
 #define PIN_SW_D      44
 
 enum Button_Event {
-    BTN_A_Pressed,
-    BTN_B_Pressed,
-    BTN_C_Pressed,
-    BTN_D_Pressed
+   BTN_A_Pressed,
+   BTN_B_Pressed,
+   BTN_C_Pressed,
+   BTN_D_Pressed
 };
 
 class OAGV_BUTTON
 {   
 public:
-    typedef void (*OAGV_NewButtonEvent)(Button_Event);
-    OAGV_BUTTON();
-    void on_NewEvent(OAGV_NewButtonEvent cbEvent);
-    void update(void);
+   typedef void (*OAGV_NewButtonEvent)(Button_Event);
+   OAGV_BUTTON();
+   void on_NewEvent(OAGV_NewButtonEvent cbEvent);
+   void update(void);
 private:
-    typedef struct {
-        int pin;
-        int state;
-        int state_last;
-        uint64_t update_last_millis;
-    }ButtonType;
-    OAGV_NewButtonEvent _cbEvent;
-    ButtonType btnA;
-    ButtonType btnB;
-    ButtonType btnC;
-    ButtonType btnD;
-    void    button_init(ButtonType *btn, int pin, uint8_t pullup);
-    int     check_button_pressed(ButtonType *btn);
+   typedef struct {
+      int pin;
+      int state;
+      int state_last;
+      uint64_t update_last_millis;
+   }ButtonType;
+   OAGV_NewButtonEvent _cbEvent;
+   ButtonType btnA;
+   ButtonType btnB;
+   ButtonType btnC;
+   ButtonType btnD;
+   void    button_init(ButtonType *btn, int pin, uint8_t pullup);
+   int     check_button_pressed(ButtonType *btn);
 };
 
 #endif

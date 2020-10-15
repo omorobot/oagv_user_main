@@ -37,29 +37,29 @@ class OAGV_SIGNAL_LAMP
 {
 public:
 
-    OAGV_SIGNAL_LAMP();
-    void reset(void);
-    void SetSignal(SignalColor_Type color, SignalBlink_Type blink);
-    void SetAlternating(SignalColor_Type color1, SignalColor_Type color2, uint16_t interval);
-    void BuzzerOn(void);
-    void BuzzerOff(void);
-    void spin(void);
+   OAGV_SIGNAL_LAMP();
+   void reset(void);
+   void SetSignal(SignalColor_Type color, SignalBlink_Type blink);
+   void SetAlternating(SignalColor_Type color1, SignalColor_Type color2, uint16_t interval);
+   void BuzzerOn(void);
+   void BuzzerOff(void);
+   void spin(void);
 private:
-    typedef struct {
-        uint8_t             pin;
-        bool                isOn;
-        uint16_t            interval;
-    }SignalLampType;
+   typedef struct {
+      uint8_t             pin;
+      bool                isOn;
+      uint16_t            interval;
+   }SignalLampType;
 
-    SignalLampType lampR;
-    SignalLampType lampY;
-    SignalLampType lampG;
-    uint8_t buzzerPin;
-    bool    buzzerOn;
-    uint64_t        update_last_millis;
-    uint32_t        update_cnt;
-    void lamp_init(SignalLampType *lamp, int pin);
-    void update_lamp_500ms(SignalLampType *lamp, uint32_t cnt);
-    void lamp_off(SignalLampType *lamp);
+   SignalLampType lampR;
+   SignalLampType lampY;
+   SignalLampType lampG;
+   uint8_t buzzerPin;
+   bool    buzzerOn;
+   uint64_t        update_last_millis;
+   uint32_t        update_cnt;
+   void lamp_init(SignalLampType *lamp, int pin);
+   void update_lamp_500ms(SignalLampType *lamp, uint32_t cnt);
+   void lamp_off(SignalLampType *lamp);
 };
 #endif
