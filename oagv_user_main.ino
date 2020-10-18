@@ -13,6 +13,7 @@
 #define PID_LINE_ERROR_I_MAX        150.0
 #define PID_LINE_OUT_MAX            180.0
 #define V_ACCEL                     50    //Originally 1 or 2
+#define BUTTON_GO_SPEED             1000
 
 MCP2515           mcp2515(53);      //Initialize CAN bus with SS pin D53
 OMOROBOT_R1       r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
@@ -59,7 +60,7 @@ void newUserButton_event(Button_Event event)
    case BTN_B_Pressed:                 // Stop button pressed
       Serial.println("BTN_B pressed");
       user.set_info_str("BTN GO");
-      r1.go(1500);
+      r1.go(BUTTON_GO_SPEED);
       //Serial1.print("$GO\r\n");
       break;
    case BTN_C_Pressed:
@@ -93,9 +94,43 @@ void newR1_TagRead_event(Tag_Struct tag)
       sprintf(disp_info, "TAG:%02X,%02X,%02X,%02X",tag.bytes[0], tag.bytes[1], tag.bytes[2], tag.bytes[3]);
       user.set_info_str(disp_info);
    }
-   switch(tag.type) {
-   case TAG_None:
-      break;
+   Serial.print("Tag type:");Serial.println(tag.type);
+   if(tag.type == 0xFE) {
+      Serial.println("TAG STOP");
+      r1.stop();
+   } 
+   else if(tag.type == 0xB2) {
+      Serial.println("TURN 1 TAG");
+      TURN_DIRECTION turn_dir;
+      PL_LOAD_UNLOAD load_unload;
+      if(tag.bytes[0] == 1) load_unload = PL_LOADING;
+      else if(tag.bytes[0]==2) load_unload = PL_UNLOADING;
+      else return;
+      if(tag.bytes[1] == 1) turn_dir = TURN_RIGHT;
+      else if(tag.bytes[1] == 2) turn_dir = TURN_LEFT;
+      else return;
+      int time1 = tag.bytes[2] * 160;
+      Serial.print("TURN1 loadunload:");Serial.print(load_unload);
+      Serial.print(" dir");Serial.print(turn_dir);
+      Serial.println("TURN 1 TAG");
+      r1.start_turn_timer(load_unload, turn_dir, 500, time1);    //16000 for 90 degree turn
+   } 
+   else if(tag.type == 0xB3) {
+      Serial.println("TURN STOP TAG");
+      r1.set_load_unload_stop();
+   } 
+   else if(tag.type == 0xB4) {
+      Serial.println("TURN 2 TAG");
+      TURN_DIRECTION turn_dir2;
+      if(tag.bytes[1] == 1) turn_dir2 = TURN_RIGHT;
+      else if(tag.bytes[1] == 2) turn_dir2 = TURN_LEFT;
+      //else return;
+      int time2 = 90 * 178;
+      Serial.print("TURN 2 timer:");Serial.println(tag.bytes[2]);
+      r1.start_turn_timer2(turn_dir2, 500, time2);    //16000 for 90 degree turn
+    } 
+
+    /*
    case TAG_DEPOT:
       if(tag.bytes[2] == depot.get_id_num()) {
          depot.set_state_num(1);
@@ -122,6 +157,38 @@ void newR1_TagRead_event(Tag_Struct tag)
       break;
    case TAG_TURN:
       break;
+   case TAG_LIFT:
+      break;
+      
+   case TAG_LOAD_UNLOAD_STOP:
+      Serial.println("TURN STOP TAG");
+      r1.set_load_unload_stop();
+      break;
+   case TAG_TURN_PL2:
+      Serial.println("TURN 2 TAG");
+      TURN_DIRECTION turn_dir2;
+      if(tag.bytes[1] == 1) turn_dir2 = TURN_RIGHT;
+      else if(tag.bytes[1] == 2) turn_dir2 = TURN_LEFT;
+      //else return;
+      int time2 = tag.bytes[2] * 176-100;
+      r1.start_turn_timer2(turn_dir2, 500, time2);    //16000 for 90 degree turn
+      break;
+      
+   case TAG_TURN_PL:
+      Serial.println("TURN 1 TAG");
+      TURN_DIRECTION turn_dir;
+      PL_LOAD_UNLOAD load_unload;
+      if(tag.bytes[0] == 1) load_unload = PL_LOADING;
+      else if(tag.bytes[0]==2) load_unload = PL_UNLOADING;
+      //else return;
+      if(tag.bytes[1] == 1) turn_dir = TURN_RIGHT;
+      else if(tag.bytes[1] == 2) turn_dir = TURN_LEFT;
+      //else return;
+      int time = tag.bytes[2] * 176-100;
+      Serial.println("TURN 1 TAG");
+      r1.start_turn_timer(load_unload, turn_dir, 500, time);    //16000 for 90 degree turn
+      break;
+
    case TAG_CIN:
       break;
    case TAG_COUT:
@@ -131,10 +198,9 @@ void newR1_TagRead_event(Tag_Struct tag)
       break;
    case TAG_SONAR:
       break;
-   case TAG_READY:
-      r1.stop();
-      break;
+   
    }
+   */
 }
 // Handle user input event from Keypad
 void newOAGV_User_event(User_Event event) {
@@ -272,7 +338,7 @@ void setup() {
    Serial.println("CAN setup");
    pinMode(PIN_STATUS_LED, OUTPUT);
    /// Setup for Motor Controller:
-   r1.set_driveMode(R1_VEHICLE_TYPE_PL153, R1DRV_LineTracerMode);
+   r1.set_driveMode(VEHICLE_TYPE_PL153, DRIVE_MODE_LINETRACER);
    r1.set_turning_speed(500, 180);  //Set turning speed 500 and Angle 180 (90degree)
    pid_line.Kp =              PID_LINE_KP;
    pid_line.Ki =              PID_LINE_KI;
@@ -280,8 +346,8 @@ void setup() {
    pid_line.error_i_max =     PID_LINE_ERROR_I_MAX;
    pid_line.out_max =         PID_LINE_OUT_MAX;
    r1.set_pid_gains(pid_line);
-   //r1.set_vehicle_type(R1_VEHICLE_TYPE_PL153);
    //r1.set_drive_direction(Drive_Reverse, Line_Reverse);  //Motor driver reversed, Line sensor facing rear
+   r1.set_drive_direction(DIRECTION_FORWARD, FACING_FORWARD);
    r1.set_lineoutTime(2000);
    r1.onNewData(newR1_message_event);
    r1.onNewTag(newR1_TagRead_event);
@@ -331,7 +397,7 @@ void loop() {
       } else {
          user.set_sonar_distance(sonar_distance_L);
          //Robot is cleared
-         if(r1.is_going()) {
+         if(r1.get_go_flag()) {
             r1.go();
          }
       }
