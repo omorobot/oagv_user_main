@@ -6,6 +6,7 @@
 #include "src/oagv_station/oagv_station.h"
 #include "src/oagv_user/oagv_button.h"
 #include "src/oagv_user/oagv_signal_lamp.h"
+#include "src/FUTABA_SBUS/FUTABA_SBUS.h"
 
 #define PID_LINE_KP                 9.0
 #define PID_LINE_KI                 0.1
@@ -14,6 +15,8 @@
 #define PID_LINE_OUT_MAX            180.0
 #define V_ACCEL                     50    //Originally 1 or 2
 #define BUTTON_GO_SPEED             1000
+
+#define DEBUG_SBUS
 
 MCP2515           mcp2515(53);      //Initialize CAN bus with SS pin D53
 OMOROBOT_R1       r1(&mcp2515);     //Initialize R1 with MCP2515 as external reference
@@ -24,6 +27,8 @@ OAGV_CONVEYOR     conv(&mcp2515);   //Initialize Conveyor and Lift controller wi
 OAGV_STATION      depot;            //Depot(Point of Loading) process
 OAGV_STATION      pou;              //POU (Point of Unloading) process
 
+FUTABA_SBUS       sBus;
+
 struct can_frame  canRxMsg;
 
 PID_Type          pid_line;
@@ -33,6 +38,7 @@ const int         PIN_ECHO1         = 65;  //A11
 const int         PIN_TRIGGER2      = 66;  //A12
 const int         PIN_ECHO2         = 67;  //A13
 
+#ifdef SONAR_ENABLE
 SONAR             sonar_L = SONAR(PIN_TRIGGER1, PIN_ECHO1);
 SONAR             sonar_R = SONAR(PIN_TRIGGER2, PIN_ECHO2);
 
@@ -40,11 +46,14 @@ uint64_t          sonar_update_millis_last = millis();
 double            sonar_distance_L  = 0.0;
 double            sonar_distance_R  = 0.0;
 int               sonar_read_state  = 0;
+#endif
 
 const int         PIN_STATUS_LED    = 48;
 uint64_t          status_led_update_millis_last = millis();
 uint64_t          process_update_millis_last = millis();
 char              disp_info[20];
+
+String            uartRxStr;
 
 //Whenever the user pressed a button
 void newUserButton_event(Button_Event event)
@@ -94,43 +103,9 @@ void newR1_TagRead_event(Tag_Struct tag)
       sprintf(disp_info, "TAG:%02X,%02X,%02X,%02X",tag.bytes[0], tag.bytes[1], tag.bytes[2], tag.bytes[3]);
       user.set_info_str(disp_info);
    }
-   Serial.print("Tag type:");Serial.println(tag.type);
-   if(tag.type == 0xFE) {
-      Serial.println("TAG STOP");
-      r1.stop();
-   } 
-   else if(tag.type == 0xB2) {
-      Serial.println("TURN 1 TAG");
-      TURN_DIRECTION turn_dir;
-      PL_LOAD_UNLOAD load_unload;
-      if(tag.bytes[0] == 1) load_unload = PL_LOADING;
-      else if(tag.bytes[0]==2) load_unload = PL_UNLOADING;
-      else return;
-      if(tag.bytes[1] == 1) turn_dir = TURN_RIGHT;
-      else if(tag.bytes[1] == 2) turn_dir = TURN_LEFT;
-      else return;
-      int time1 = tag.bytes[2] * 160;
-      Serial.print("TURN1 loadunload:");Serial.print(load_unload);
-      Serial.print(" dir");Serial.print(turn_dir);
-      Serial.println("TURN 1 TAG");
-      r1.start_turn_timer(load_unload, turn_dir, 500, time1);    //16000 for 90 degree turn
-   } 
-   else if(tag.type == 0xB3) {
-      Serial.println("TURN STOP TAG");
-      r1.set_load_unload_stop();
-   } 
-   else if(tag.type == 0xB4) {
-      Serial.println("TURN 2 TAG");
-      TURN_DIRECTION turn_dir2;
-      if(tag.bytes[1] == 1) turn_dir2 = TURN_RIGHT;
-      else if(tag.bytes[1] == 2) turn_dir2 = TURN_LEFT;
-      //else return;
-      int time2 = 90 * 178;
-      Serial.print("TURN 2 timer:");Serial.println(tag.bytes[2]);
-      r1.start_turn_timer2(turn_dir2, 500, time2);    //16000 for 90 degree turn
-    } 
-
-    /*
+   switch(tag.type) {
+   case TAG_None:
+      break;
    case TAG_DEPOT:
       if(tag.bytes[2] == depot.get_id_num()) {
          depot.set_state_num(1);
@@ -160,35 +135,42 @@ void newR1_TagRead_event(Tag_Struct tag)
    case TAG_LIFT:
       break;
       
-   case TAG_LOAD_UNLOAD_STOP:
+   case TAG_TURN_PL: 
+   {
+      TURN_DIRECTION turn_dir;
+      PL_LOAD_UNLOAD load_unload;
+      if(tag.bytes[0] == 1) load_unload = PL_LOADING;
+      else if(tag.bytes[0]==2) load_unload = PL_UNLOADING;
+      else return;
+      if(tag.bytes[1] == 1) turn_dir = TURN_RIGHT;
+      else if(tag.bytes[1] == 2) turn_dir = TURN_LEFT;
+      else return;
+      int time1 = tag.bytes[2] * 160;
+      Serial.print("TURN1 loadunload:");Serial.print(load_unload);
+      Serial.print(" dir");Serial.print(turn_dir);
+      Serial.println("TURN 1 TAG");
+      r1.start_turn_timer(load_unload, turn_dir, 500, time1);    //16000 for 90 degree turn
+   }
+      break;
+
+   case TAG_LOAD_UNLOAD_STOP: 
+   {
       Serial.println("TURN STOP TAG");
       r1.set_load_unload_stop();
+   } 
       break;
-   case TAG_TURN_PL2:
+   case TAG_TURN_PL2: 
+   {
       Serial.println("TURN 2 TAG");
       TURN_DIRECTION turn_dir2;
       if(tag.bytes[1] == 1) turn_dir2 = TURN_RIGHT;
       else if(tag.bytes[1] == 2) turn_dir2 = TURN_LEFT;
       //else return;
-      int time2 = tag.bytes[2] * 176-100;
+      int time2 = 90 * 178;
+      Serial.print("TURN 2 timer:");Serial.println(tag.bytes[2]);
       r1.start_turn_timer2(turn_dir2, 500, time2);    //16000 for 90 degree turn
+    } 
       break;
-      
-   case TAG_TURN_PL:
-      Serial.println("TURN 1 TAG");
-      TURN_DIRECTION turn_dir;
-      PL_LOAD_UNLOAD load_unload;
-      if(tag.bytes[0] == 1) load_unload = PL_LOADING;
-      else if(tag.bytes[0]==2) load_unload = PL_UNLOADING;
-      //else return;
-      if(tag.bytes[1] == 1) turn_dir = TURN_RIGHT;
-      else if(tag.bytes[1] == 2) turn_dir = TURN_LEFT;
-      //else return;
-      int time = tag.bytes[2] * 176-100;
-      Serial.println("TURN 1 TAG");
-      r1.start_turn_timer(load_unload, turn_dir, 500, time);    //16000 for 90 degree turn
-      break;
-
    case TAG_CIN:
       break;
    case TAG_COUT:
@@ -198,9 +180,13 @@ void newR1_TagRead_event(Tag_Struct tag)
       break;
    case TAG_SONAR:
       break;
+   case TAG_READY:
+      Serial.println("TAG STOP");
+      r1.stop();
+      break;
    
    }
-   */
+   
 }
 // Handle user input event from Keypad
 void newOAGV_User_event(User_Event event) {
@@ -231,6 +217,7 @@ void newConveyor_event(ConveyorEventType event) {
     break;
   }
 }
+#ifdef SONAR_ENABLE
 void loop_update_sonar()
 {
    // Read left and right sonar measurement
@@ -240,6 +227,7 @@ void loop_update_sonar()
       sonar_distance_R = sonar_R.measure_cm();
    }
 }
+#endif
 // For any new can message from nodes
 void process_new_can_frame(struct can_frame rxMsg)
 {
@@ -327,6 +315,10 @@ void process_pou()
    }
 }
 
+void process_Serial1_packet() {
+
+}
+
 void setup() {
    // put your setup code here, to run once:
    Serial.begin(115200);
@@ -336,6 +328,9 @@ void setup() {
    mcp2515.setBitrate(CAN_500KBPS);
    mcp2515.setNormalMode();
    Serial.println("CAN setup");
+
+   sBus.begin();
+
    pinMode(PIN_STATUS_LED, OUTPUT);
    /// Setup for Motor Controller:
    r1.set_driveMode(VEHICLE_TYPE_PL153, DRIVE_MODE_LINETRACER);
@@ -364,10 +359,11 @@ void setup() {
    ///Setup for other devices:
    buttons.on_NewEvent(newUserButton_event);
    conv.onNewEvent(newConveyor_event);
-
+#ifdef SONAR_ENABLE
    ///Setup for sonar detection range
    sonar_L.set_range(60.0);
    sonar_R.set_range(60.0);
+#endif
    ///Setup for signal lamp, buzzer
    signal.reset();
    signal.SetSignal(Signal_Green, Blink_Slow);
@@ -379,12 +375,35 @@ void loop() {
    if (mcp2515.readMessage(&canRxMsg) == MCP2515::ERROR_OK) {
       process_new_can_frame(canRxMsg);
    }
+   if(Serial1.available()) {
+      char c = Serial1.read();
+      if(c == '\n') {
+         process_Serial1_packet();
+      } else {
+         uartRxStr += c;
+      }
+   }
+   sBus.FeedLine();
+   if (sBus.toChannels == 1){
+      sBus.UpdateServos();
+      sBus.UpdateChannels();
+      sBus.toChannels = 0;
+#ifdef DEBUG_SBUS
+      Serial.print("SBUS [");
+      for(int i=0; i<4; i++) {
+         Serial.print(sBus.channels[i]);
+         Serial.print("] [");
+      }
+      Serial.print(sBus.channels[5]);
+      Serial.println("]");
+#endif
+   }
    r1.spin();
    user.spin();
    buttons.update();
    conv.spin();
    signal.spin();
-  
+#ifdef SONAR_ENABLE  
    if(millis() - sonar_update_millis_last > 199) {    //For every 200ms
       loop_update_sonar();
       //Check if anything detected in the sensor
@@ -403,7 +422,7 @@ void loop() {
       }
       sonar_update_millis_last = millis();
    }
-  
+#endif
    if(millis() - process_update_millis_last > 9) {
 
    }
