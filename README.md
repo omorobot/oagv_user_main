@@ -19,11 +19,28 @@ Main program is for controlling Omorobot's motor driver module per line sensor i
  이 프로젝트는 다음 라이브러리를 참조합니다.
   - [arduino-Keypad 라이브러리](https://www.arduino.cc/reference/en/libraries/keypad/)  에서 최신 버전의 zip 파일을 다운로드 합니다. (2020-10-12 현재 [3.1.1](http://downloads.arduino.cc/libraries/github.com/Chris--A/Keypad-3.1.1.zip) )
   - [arduino-mcp2515 라이브러리](https://github.com/autowp/arduino-mcp2515) 에서 zip 파일을 다운로드합니다.  
-  - Arduino IDE를 열고 스케치 > Include Library > Add .ZIP Library 를 선택하여 다운로드한 파일을 선택  
+
+
+ Arduino IDE를 열고 스케치 > Include Library > Add .ZIP Library 를 선택하여 다운로드한 파일을 선택합니다.  
 
 <div align="center">
   <img src="img/add_library.png">
 </div>
+
+## Submodules
+
+이 프로젝트는 다음 서브모듈을 포함합니다.
+ - [Omoduino 라이브러리](https://github.com/omorobot/omoduino)  
+ - [FUTABA_SBUS 라이브러리](https://github.com/omorobot/FUTABA_SBUS)  
+
+서브모듈을 업데이트하기 위해 다음과 같이 입력합니다.  
+
+```
+cd oagv_user_main
+git submodule update --init --recursive
+```
+
+
 
 ## 라이센스 및 권리
 
