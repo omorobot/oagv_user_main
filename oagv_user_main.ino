@@ -26,6 +26,9 @@ OAGV_STATION      pou;              //POU (Point of Unloading) process
 
 struct can_frame  canRxMsg;
 
+struct can_frame  canWCCmsg;
+uint64_t          wcc_update_millis_last = millis();
+
 PID_Type          pid_line;
 
 const int         PIN_TRIGGER1      = 64;  //A10
@@ -245,8 +248,8 @@ void process_new_can_frame(struct can_frame rxMsg)
 {
    int senderID = (rxMsg.can_id>>4)&0x0F;
    int dlc = rxMsg.can_dlc;
-   //Serial.print("CAN:");
-   //Serial.print(rxMsg.can_id);
+   Serial.print("CAN:");
+   Serial.print(rxMsg.can_id);
    switch(senderID) {
    case 0x02:     //From LINE Sensor
       r1.new_can_line(rxMsg);
@@ -256,6 +259,11 @@ void process_new_can_frame(struct can_frame rxMsg)
       break;
    case 0x05:     //From conveyor module
       conv.new_can_frame(rxMsg);
+      break;
+   case 0x08:
+      Serial.print("Batt V=");
+      Serial.print(rxMsg.data[0]<<8|rxMsg.data[1]);
+      Serial.println("");
       break;
    }
 }
@@ -372,6 +380,9 @@ void setup() {
    signal.reset();
    signal.SetSignal(Signal_Green, Blink_Slow);
    digitalWrite(PIN_STATUS_LED, LOW);
+   canWCCmsg.can_id = 0x18;
+   canWCCmsg.can_dlc = 1;
+   canWCCmsg.data[0] = 0;
 }
 
 void loop() {
@@ -386,7 +397,7 @@ void loop() {
    signal.spin();
   
    if(millis() - sonar_update_millis_last > 199) {    //For every 200ms
-      loop_update_sonar();
+      //loop_update_sonar();
       //Check if anything detected in the sensor
       if(sonar_L.detected()) {
          //r1.pause();
@@ -410,5 +421,10 @@ void loop() {
    if(millis() - status_led_update_millis_last > 499) {
       digitalWrite(PIN_STATUS_LED, !digitalRead(PIN_STATUS_LED));
       status_led_update_millis_last = millis();
+   }
+   if(millis() - wcc_update_millis_last > 49) {
+      //Serial.println("Command WCC");
+      mcp2515.sendMessage(&canWCCmsg);
+      wcc_update_millis_last = millis();
    }
 }
